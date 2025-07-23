@@ -1,0 +1,169 @@
+## *Milestone 1: Reset Slot Date While Preserving Time (Admin Rescheduling)*
+
+### *Entity*
+java
+@Entity
+public class StaffWorkSlot {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private LocalDate workDate;
+    private LocalTime startTime;
+    private LocalTime endTime;
+
+    private boolean booked;
+
+    // Getters and setters
+}
+
+
+### *ResetDateRequest DTO*
+java
+public class ResetDateRequest {
+    private List<Long> slotIds;
+    
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate newDate;
+
+    // getters and setters
+}
+
+
+### *Controller*
+java
+@RestController
+@RequestMapping("/api/staff/schedule")
+public class StaffScheduleController {
+
+    @Autowired
+    private StaffWorkSlotService slotService;
+
+    @PutMapping("/reset-date")
+    public ResponseEntity<?> resetSlotDate(@RequestBody ResetDateRequest request) {
+        slotService.resetWorkDate(request.getSlotIds(), request.getNewDate());
+        return ResponseEntity.ok("Slots updated successfully.");
+    }
+}
+
+
+### *Service*
+java
+@Service
+public class StaffWorkSlotService {
+
+    @Autowired
+    private StaffWorkSlotRepository repository;
+
+    public void resetWorkDate(List<Long> slotIds, LocalDate newDate) {
+        List<StaffWorkSlot> slots = repository.findAllById(slotIds);
+
+        for (StaffWorkSlot slot : slots) {
+            slot.setWorkDate(newDate);
+        }
+
+        repository.saveAll(slots);
+    }
+}
+
+
+## *Milestone 2: Show Confirmation Message After Booking*
+
+### *BookingResponse DTO*
+java
+public class ApiResponse {
+    private boolean success;
+    private String message;
+
+    // Constructors
+    public ApiResponse(boolean success, String message) {
+        this.success = success;
+        this.message = message;
+    }
+
+    // Getters and setters
+}
+
+
+### *Booking Controller*
+java
+@RestController
+@RequestMapping("/api/bookings")
+public class BookingController {
+
+    @Autowired
+    private StaffWorkSlotRepository slotRepo;
+
+    @PostMapping
+    public ResponseEntity<ApiResponse> bookSlot(@RequestParam Long slotId, @RequestParam String userId) {
+        StaffWorkSlot slot = slotRepo.findById(slotId)
+                .orElseThrow(() -> new RuntimeException("Slot not found"));
+
+        if (slot.isBooked()) {
+            return ResponseEntity.badRequest().body(new ApiResponse(false, "Slot is already booked."));
+        }
+
+        slot.setBooked(true);
+        slotRepo.save(slot);
+
+        return ResponseEntity.ok(new ApiResponse(true, "Booking confirmed successfully."));
+    }
+}
+
+
+## *Milestone 3: Admin Manually Marks a Slot as Booked*
+
+### *Entity Update*
+java
+private String bookedBy;
+private LocalDateTime bookedAt;
+
+
+### *Admin Service*
+java
+@Service
+public class AdminSlotService {
+
+    @Autowired
+    private StaffWorkSlotRepository repository;
+
+    public void markSlotAsBooked(Long slotId, String adminUser) {
+        StaffWorkSlot slot = repository.findById(slotId)
+            .orElseThrow(() -> new RuntimeException("Slot not found."));
+
+        if (slot.isBooked()) {
+            throw new IllegalStateException("Slot already booked.");
+        }
+
+        slot.setBooked(true);
+        slot.setBookedBy(adminUser);
+        slot.setBookedAt(LocalDateTime.now());
+
+        repository.save(slot);
+    }
+}
+
+
+### *Admin Controller Endpoint*
+java
+@RestController
+@RequestMapping("/admin/slots")
+public class AdminSlotController {
+
+    @Autowired
+    private AdminSlotService service;
+
+    @PutMapping("/{slotId}/mark-booked")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<String> markBooked(@PathVariable Long slotId, Authentication auth) {
+        String adminName = auth.getName(); // admin's username
+        service.markSlotAsBooked(slotId, adminName);
+        return ResponseEntity.ok("Slot marked as booked by admin.");
+    }
+}
+
+
+## *Repository*
+```java
+public interface StaffWorkSlotRepository extends JpaRepository<StaffWorkSlot, Long> {
+}
