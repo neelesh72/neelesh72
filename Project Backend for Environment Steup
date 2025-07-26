@@ -1,0 +1,86 @@
+📁 Backend Project Structure (backend/)
+pgsql
+Copy
+Edit
+backend/
+├── index.js
+├── package.json
+├── .env
+└── README.md
+📦 package.json
+json
+Copy
+Edit
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.22"
+  }
+}
+Install dependencies:
+bash
+Copy
+Edit
+npm install
+🌐 .env
+env
+Copy
+Edit
+PORT=5000
+🚀 index.js
+javascript
+Copy
+Edit
+const express = require('express');
+const cors = require('cors');
+const dotenv = require('dotenv');
+
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+
+// Sample data
+const items = [
+  { name: 'Item 1' },
+  { name: 'Item 2' },
+  { name: 'Item 3' }
+];
+
+// Routes
+app.get('/api/items', (req, res) => {
+  res.json(items);
+});
+
+// Start server
+app.listen(PORT, () => {
+  console.log(`✅ Server is running on http://localhost:${PORT}`);
+});
+▶️ Run the Server
+For normal run:
+
+bash
+Copy
+Edit
+npm start
+For development with auto-reload (if you installed nodemon):
+
+bash
+Copy
+Edit
+npm run dev
